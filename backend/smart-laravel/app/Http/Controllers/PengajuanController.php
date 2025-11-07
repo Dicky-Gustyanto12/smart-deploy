@@ -17,20 +17,16 @@ class PengajuanController extends Controller
         $validated = $request->validate([
             'status' => 'required|in:Proses,Diterima,Batal'
         ]);
-
         $pengajuan = Pengajuan::findOrFail($id_pengajuan);
         $pengajuan->status = $validated['status'];
         $pengajuan->save();
-
         return response()->json($pengajuan);
     }
 
     public function store(Request $request)
     {
         $idPoktan = $request->input('id_poktan');
-        $latest = Pengajuan::where('id_poktan', $idPoktan)
-            ->orderByDesc('created_at')->first();
-
+        $latest = Pengajuan::where('id_poktan', $idPoktan)->orderByDesc('created_at')->first();
         if ($latest && $latest->status === 'Proses') {
             return response()->json([
                 'message' => 'Pengajuan sebelumnya masih Proses! Tidak bisa mengajukan lagi.'
@@ -48,7 +44,7 @@ class PengajuanController extends Controller
         ]);
         $data['status'] = 'Proses';
 
-        // Generate ID otomatis
+        // Generate kode id_pengajuan otomatis
         $latestPJ = Pengajuan::orderByDesc('id_pengajuan')->first();
         $nextNum = $latestPJ ? intval(substr($latestPJ->id_pengajuan, 2)) + 1 : 1;
         $data['id_pengajuan'] = 'PJ' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
@@ -56,5 +52,16 @@ class PengajuanController extends Controller
         $pengajuan = Pengajuan::create($data);
         return response()->json($pengajuan, 201);
     }
-}
 
+    // Tambahkan method destroy di bawah ini
+    public function destroy($id_pengajuan)
+    {
+        try {
+            $pengajuan = Pengajuan::findOrFail($id_pengajuan);
+            $pengajuan->delete();
+            return response()->json(['message' => 'Deleted'], 200);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Gagal menghapus data: ' . $e->getMessage()], 500);
+        }
+    }
+}

@@ -22,13 +22,13 @@ export default function DataHasilRekomendasi() {
             <div>
               <TableCmaxmin />
             </div>
-            <div>
+            {/* <div>
               <TableNormalisasi />
             </div>
             <div>
               <TableSkor />
              
-            </div>
+            </div> */}
             
           </div>
         </div>

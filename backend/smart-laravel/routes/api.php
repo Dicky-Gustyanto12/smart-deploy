@@ -48,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/pengajuan', [PengajuanController::class, 'index']);
     Route::post('/pengajuan', [PengajuanController::class, 'store']);
     Route::put('/pengajuan/{id}', [PengajuanController::class, 'update']);
+    Route::delete('/pengajuan/{id}', [PengajuanController::class, 'destroy']);
 
     Route::get('penilaian', [PenilaianController::class, 'index']);
     Route::post('penilaian', [PenilaianController::class, 'store']);

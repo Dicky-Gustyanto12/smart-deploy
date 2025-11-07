@@ -1,150 +1,253 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
-import TableSkeleton from "./TableSkleton";
 
+function TableSkeleton({ rows = 2, cols = 5 }) {
+  return (
+    <tbody>
+      {Array.from({ length: rows }).map((_, idx) => (
+        <tr key={idx} className="animate-pulse">
+          {Array.from({ length: cols }).map((_, col) => (
+            <td key={col} className="py-4 px-6">
+              <div className="h-4 bg-[#e5e7eb] rounded w-full"></div>
+            </td>
+          ))}
+        </tr>
+      ))}
+    </tbody>
+  );
+}
 
-export default function TableCmaxmin({ onResult }) {
-  const [penilaianAll, setPenilaianAll] = useState([]);
-  const [kriteriaAll, setKriteriaAll] = useState([]);
+export default function TablePenilaianSimple() {
   const [poktanMap, setPoktanMap] = useState({});
+  const [penilaianAll, setPenilaianAll] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [kriteriaAll, setKriteriaAll] = useState([]);
+  const [parameterAll, setParameterAll] = useState([]);
 
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      axios.get("http://localhost:8000/api/penilaian", { headers: { Accept: "application/json" } }),
-      axios.get("http://localhost:8000/api/kriteria", { headers: { Accept: "application/json" } }),
-      axios.get("http://localhost:8000/api/poktan", { headers: { Accept: "application/json" } }),
+      axios.get("http://localhost:8000/api/poktan"),
+      axios.get("http://localhost:8000/api/penilaian"),
+      axios.get("http://localhost:8000/api/kriteria"),
+      axios.get("http://localhost:8000/api/parameter"),
     ])
-      .then(([penRes, kriRes, pokRes]) => {
-        setPenilaianAll(penRes.data || []);
-        setKriteriaAll(kriRes.data || []);
-        setPoktanMap(Object.fromEntries((pokRes.data || []).map((p) => [p.id_poktan, p.nama_poktan])));
+      .then(([poktanRes, penilaianRes, kriteriaRes, parameterRes]) => {
+        setPoktanMap(Object.fromEntries(
+          poktanRes.data.map((p) => [p.id_poktan, p.nama_poktan])
+        ));
+        setPenilaianAll(penilaianRes.data);
+        setKriteriaAll(kriteriaRes.data);
+        setParameterAll(parameterRes.data);
       })
-      .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
-  const kriteriaKeys = kriteriaAll.map((k) => k.id_kriteria);
-  const kriteriaCodes = kriteriaAll.map((k, i) => k.kode || `K${i + 1}`);
-
-  // Mapping matrix, handle penilaian kosong/null
-  const matrixRows = Array.isArray(penilaianAll) && penilaianAll.length > 0
-    ? penilaianAll.map((poktan) => ({
-        kode: poktan.id_poktan,
-        nama: poktanMap[poktan.id_poktan] || "-",
-        nilai: kriteriaKeys.map((k) =>
-          poktan.details?.[k]?.nilai !== undefined &&
-          poktan.details[k] !== null
-            ? poktan.details[k].nilai
-            : null
-        ),
-      }))
-    : [];
-
-  // Perhitungan summary
-  const cmin = kriteriaKeys.map((_, i) => {
-    const vals = matrixRows.map((row) => row.nilai[i]).filter(v => v !== null && v !== undefined && v !== "");
-    return vals.length > 0 ? Math.min(...vals) : null;
-  });
-
-  const cmax = kriteriaKeys.map((_, i) => {
-    const vals = matrixRows.map((row) => row.nilai[i]).filter(v => v !== null && v !== undefined && v !== "");
-    return vals.length > 0 ? Math.max(...vals) : null;
-  });
-
-  const cmaxmin = kriteriaKeys.map((_, i) =>
-    cmin[i] !== null && cmax[i] !== null ? cmax[i] - cmin[i] : null
-  );
-
-  // Debug log
-  useEffect(() => {
-    console.log("[DEBUG] Cmaxmin, kriteria", {
-      matrixRows,
-      kriteriaCodes,
-      cmin,
-      cmax,
-      cmaxmin,
-      penilaianAll,
-      kriteriaAll
+  const paramMap = Object.fromEntries(parameterAll.map((p) => [p.id_parameter, p]));
+  const getDetailObj = (details, id_kriteria) => details?.[id_kriteria] ?? {};
+  const getCellValue = (item, id_kriteria) => {
+    const detail = getDetailObj(item.details, id_kriteria);
+    if (!detail || !detail.id_parameter) return "";
+    const nilai = paramMap[detail.id_parameter]?.nilai;
+    return nilai !== undefined && nilai !== null ? nilai : "";
+  };
+  const getNamaPoktan = (id_poktan) => poktanMap[id_poktan] || "";
+  const getCmax = (id_kriteria) => {
+    const vals = penilaianAll.map(item => Number(getCellValue(item, id_kriteria))).filter(n => !isNaN(n));
+    return vals.length ? Math.max(...vals) : '';
+  };
+  const getCmin = (id_kriteria) => {
+    const vals = penilaianAll.map(item => Number(getCellValue(item, id_kriteria))).filter(n => !isNaN(n));
+    return vals.length ? Math.min(...vals) : '';
+  };
+  const getCmaxMin = (id_kriteria) => {
+    const cmax = getCmax(id_kriteria);
+    const cmin = getCmin(id_kriteria);
+    if (cmax === '' || cmin === '') return '';
+    return cmax - cmin;
+  };
+  const getUtilitas = (item, id_kriteria) => {
+    const Cmax = getCmax(id_kriteria);
+    const Cmin = getCmin(id_kriteria);
+    const Cout = Number(getCellValue(item, id_kriteria));
+    if (Cmax === '' || Cmin === '' || isNaN(Cout)) return '';
+    const pembagi = Cmax - Cmin;
+    if (pembagi === 0) return 0;
+    return ((Cout - Cmin) / pembagi).toFixed(2);
+  };
+  // Bobot dinamis dari API kriteria
+  const getBobotKriteria = (id_kriteria) => {
+    const krt = kriteriaAll.find(k => k.id_kriteria === id_kriteria);
+    return krt ? Number(krt.bobot) : 0; // pastikan field 'bobot' ada
+  };
+  // Perhitungan row SMART
+  const getNilaiAkhirRow = (item) => {
+    let total = 0;
+    let detail = kriteriaAll.map((krt) => {
+      const util = Number(getUtilitas(item, krt.id_kriteria));
+      const bobot = getBobotKriteria(krt.id_kriteria);
+      const perkalian = (util * bobot).toFixed(2);
+      total += Number(perkalian);
+      return {
+        kode: krt.kode,
+        util,
+        bobot,
+        perkalian
+      };
     });
-  }, [matrixRows, kriteriaCodes, cmin, cmax, cmaxmin, penilaianAll, kriteriaAll]);
-
-  // Kirim hasil ke parent, SYARAT: semua array ada dan minimal ada 1 data
-  useEffect(() => {
-    const n = kriteriaCodes.length;
-    if (
-      typeof onResult === "function" &&
-      !loading &&
-      n > 0 &&
-      matrixRows.length > 0 &&
-      cmin.length === n &&
-      cmaxmin.length === n &&
-      cmin.some(v => v !== null) // harus ada nilai
-    ) {
-      onResult({
-        matrixRows,
-        kriteriaCodes,
-        cmin,
-        cmax,
-        cmaxmin
-      });
-    }
-  }, [matrixRows, kriteriaCodes, cmin, cmax, cmaxmin, loading, onResult]);
-
-  const tableRows = [
-    ...matrixRows.map((row) => ({
-      label: row.kode,
-      nama: row.nama,
-      values: row.nilai,
-      isSummary: false,
-    })),
-    { label: "Cmax", nama: "", values: cmax, isSummary: true },
-    { label: "Cmin", nama: "", values: cmin, isSummary: true },
-    { label: "cmax-cmin", nama: "", values: cmaxmin, isSummary: true },
-  ];
+    return { detail, total: total.toFixed(2) };
+  };
 
   return (
-    <div className="p-4 w-full max-w-6xl mx-auto">
-      <h2 className="text-xl font-bold mb-4 text-gray-800">
-        Tabel Alternatif-Nilai Kriteria (SMART)
-      </h2>
-      <div className="overflow-x-auto bg-white rounded shadow">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-gray-200 text-gray-700 uppercase">
-            <tr>
-              <th className="py-3 px-4">Kode</th>
-              <th className="py-3 px-4">Nama Poktan</th>
-              {kriteriaCodes.map((code, i) => (
-                <th key={i} className="py-3 px-4">{code}</th>
-              ))}
-            </tr>
-          </thead>
-          {loading ? (
-            <TableSkeleton rows={6} columns={2 + kriteriaKeys.length} />
-          ) : (
+    <div className="w-full px-0 max-w-none mt-1">
+      {/* Tabel Hasil Penilaian */}
+      <div className="mb-8">
+        <label className="font-bold text-xl mb-2 block">Tabel Cmax Cmin</label>
+        <div className="bg-white rounded-xl shadow-sm w-full">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-[#e5e7eb]">
+                <th className="px-6 py-3 text-left font-semibold">No</th>
+                <th className="px-6 py-3 text-left font-semibold">Kode Poktan</th>
+                <th className="px-6 py-3 text-left font-semibold">Nama Poktan</th>
+                {kriteriaAll.map((krt) => (
+                  <th key={krt.id_kriteria} className="px-6 py-3 text-center font-semibold">
+                    {krt.kode ? `${krt.kode} - ` : ""}
+                    {krt.kriteria}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            {loading ? (
+              <TableSkeleton rows={3} cols={3 + kriteriaAll.length} />
+            ) : (
+              <tbody>
+                {penilaianAll.length === 0 && (
+                  <tr>
+                    <td colSpan={3 + kriteriaAll.length} className="px-6 py-5 text-center text-gray-500">
+                      Belum ada poktan yang sudah dinilai
+                    </td>
+                  </tr>
+                )}
+                {penilaianAll.map((item, idx) => (
+                  <tr key={item.id_penilaian} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                    <td className="px-6 py-3 text-left">{idx + 1}</td>
+                    <td className="px-6 py-3 text-left">{item.id_poktan}</td>
+                    <td className="px-6 py-3 text-left">{getNamaPoktan(item.id_poktan)}</td>
+                    {kriteriaAll.map((krt) => {
+                      const val = getCellValue(item, krt.id_kriteria);
+                      return (
+                        <td key={krt.id_kriteria} className="px-6 py-3 text-center">
+                          {val}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+                {/* Kolom Cmax */}
+                <tr className="bg-gray-100 font-semibold">
+                  <td className="px-6 py-3 text-left" colSpan={3}>Cmax</td>
+                  {kriteriaAll.map((krt) => (
+                    <td key={krt.id_kriteria} className="px-6 py-3 text-center text-black">{getCmax(krt.id_kriteria)}</td>
+                  ))}
+                </tr>
+                {/* Kolom Cmin */}
+                <tr className="bg-gray-100 font-semibold">
+                  <td className="px-6 py-3 text-left" colSpan={3}>Cmin</td>
+                  {kriteriaAll.map((krt) => (
+                    <td key={krt.id_kriteria} className="px-6 py-3 text-center text-black">{getCmin(krt.id_kriteria)}</td>
+                  ))}
+                </tr>
+                {/* Kolom Cmax - Cmin */}
+                <tr className="bg-gray-100 font-semibold">
+                  <td className="px-6 py-3 text-left" colSpan={3}>Cmax - Cmin</td>
+                  {kriteriaAll.map((krt) => (
+                    <td key={krt.id_kriteria} className="px-6 py-3 text-center text-black">{getCmaxMin(krt.id_kriteria)}</td>
+                  ))}
+                </tr>
+              </tbody>
+            )}
+          </table>
+        </div>
+      </div>
+      {/* Tabel Utilitas */}
+      <div className="mt-8">
+        <label className="font-bold text-lg mb-2 block">Tabel Perhitungan Utilitas Poktan</label>
+        <div className="bg-white rounded-xl shadow-sm w-full">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-[#e5e7eb]">
+                <th className="px-6 py-3 text-left font-semibold">Kode Poktan</th>
+                <th className="px-6 py-3 text-left font-semibold">Nama Poktan</th>
+                {kriteriaAll.map((krt) => (
+                  <th key={krt.id_kriteria} className="px-6 py-3 text-center font-semibold">{krt.kode ? krt.kode : ""}</th>
+                ))}
+              </tr>
+            </thead>
             <tbody>
-              {tableRows.map((row, idx) => (
-                <tr
-                  key={idx}
-                  className={
-                    row.isSummary
-                      ? "bg-gray-100 font-semibold"
-                      : idx % 2 === 0
-                      ? "bg-gray-50"
-                      : "bg-white"
-                  }
-                >
-                  <td className="py-2 px-4">{row.label}</td>
-                  <td className="py-2 px-4">{row.nama}</td>
-                  {row.values.map((val, i) => (
-                    <td key={i} className="py-2 px-4">{val ?? "-"}</td>
+              {penilaianAll.length === 0 && (
+                <tr>
+                  <td colSpan={2 + kriteriaAll.length} className="px-6 py-5 text-center text-gray-500">
+                    Belum ada poktan yang sudah dinilai
+                  </td>
+                </tr>
+              )}
+              {penilaianAll.map((item, idx) => (
+                <tr key={"util_" + item.id_penilaian} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                  <td className="px-6 py-3 text-left">{item.id_poktan}</td>
+                  <td className="px-6 py-3 text-left">{getNamaPoktan(item.id_poktan)}</td>
+                  {kriteriaAll.map((krt) => (
+                    <td key={krt.id_kriteria} className="px-6 py-3 text-center">
+                      {getUtilitas(item, krt.id_kriteria)}
+                    </td>
                   ))}
                 </tr>
               ))}
             </tbody>
-          )}
-        </table>
+          </table>
+        </div>
+      </div>
+      {/* Tabel Nilai Akhir SMART */}
+      <div className="mt-8">
+        <label className="font-bold text-lg mb-2 block">Tabel Nilai Akhir Metode SMART</label>
+        <div className="bg-white rounded-xl shadow-sm w-full">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-[#e5e7eb]">
+                <th className="px-6 py-3 text-left font-semibold">Kode Poktan</th>
+                <th className="px-6 py-3 text-left font-semibold">Nama Poktan</th>
+                {kriteriaAll.map((krt) => (
+                  <th key={krt.id_kriteria} className="px-6 py-3 text-center font-semibold">{krt.kode}</th>
+                ))}
+                <th className="px-6 py-3 text-center font-semibold">Total Nilai Akhir</th>
+              </tr>
+            </thead>
+            <tbody>
+              {penilaianAll.length === 0 && (
+                <tr>
+                  <td colSpan={2 + kriteriaAll.length + 1} className="px-6 py-5 text-center text-gray-500">
+                    Belum ada poktan yang sudah dinilai
+                  </td>
+                </tr>
+              )}
+              {penilaianAll.map((item, idx) => {
+                const result = getNilaiAkhirRow(item);
+                return (
+                  <tr key={"smart_" + item.id_penilaian} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                    <td className="px-6 py-3 text-left font-bold">{item.id_poktan}</td>
+                    <td className="px-6 py-3 text-left">{getNamaPoktan(item.id_poktan)}</td>
+                    {result.detail.map((d, dIdx) => (
+                      <td key={"kriteria_"+d.kode} className="px-6 py-3 text-center">
+                        {`${d.util} x ${d.bobot} = ${d.perkalian}`}
+                      </td>
+                    ))}
+                    <td className="px-6 py-3 text-center font-bold">{result.total}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

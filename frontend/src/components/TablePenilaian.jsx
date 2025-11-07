@@ -36,44 +36,28 @@ export default function TablePenilaian() {
 
   useEffect(() => {
     fetchData();
-    axios
-      .get("http://localhost:8000/api/kriteria", {
-        headers: { Accept: "application/json" },
-      })
-      .then((res) => setKriteriaAll(res.data));
-    axios
-      .get("http://localhost:8000/api/parameter", {
-        headers: { Accept: "application/json" },
-      })
-      .then((res) => setParameterAll(res.data));
+    axios.get("http://localhost:8000/api/kriteria").then((res) => setKriteriaAll(res.data));
+    axios.get("http://localhost:8000/api/parameter").then((res) => setParameterAll(res.data));
   }, []);
 
   const fetchData = () => {
     setLoading(true);
     Promise.all([
-      axios.get("http://localhost:8000/api/poktan", {
-        headers: { Accept: "application/json" },
-      }),
-      axios.get("http://localhost:8000/api/penilaian", {
-        headers: { Accept: "application/json" },
-      }),
+      axios.get("http://localhost:8000/api/poktan"),
+      axios.get("http://localhost:8000/api/penilaian"),
     ])
       .then(([poktanRes, penilaianRes]) => {
         const poktanResult = poktanRes.data;
         const penilaianResult = penilaianRes.data;
-        setPoktanAll(
-          poktanResult.map((p) => ({
-            value: p.id_poktan,
-            label: `${p.id_poktan} - ${p.nama_poktan}`,
-            id_poktan: p.id_poktan,
-            nama_poktan: p.nama_poktan,
-          }))
-        );
-        setPoktanMap(
-          Object.fromEntries(
-            poktanResult.map((p) => [p.id_poktan, p.nama_poktan])
-          )
-        );
+        setPoktanAll(poktanResult.map((p) => ({
+          value: p.id_poktan,
+          label: `${p.id_poktan} - ${p.nama_poktan}`,
+          id_poktan: p.id_poktan,
+          nama_poktan: p.nama_poktan,
+        })));
+        setPoktanMap(Object.fromEntries(
+          poktanResult.map((p) => [p.id_poktan, p.nama_poktan])
+        ));
         setPenilaianAll(penilaianResult);
       })
       .finally(() => setLoading(false));
@@ -84,21 +68,22 @@ export default function TablePenilaian() {
   const getDetailObj = (details, id_kriteria) => details?.[id_kriteria] ?? {};
   const getCellValue = (item, id_kriteria) => {
     const detail = getDetailObj(item.details, id_kriteria);
-    if (!detail || !detail.id_parameter) return "-";
-    return paramMap[detail.id_parameter]?.nilai ?? "-";
+    if (!detail || !detail.id_parameter) return "";
+    const nilai = paramMap[detail.id_parameter]?.nilai;
+    return nilai !== undefined && nilai !== null ? nilai : "";
   };
   const getCellLabel = (item, id_kriteria) => {
     const detail = getDetailObj(item.details, id_kriteria);
-    if (!detail || !detail.id_parameter) return "-";
-    return paramMap[detail.id_parameter]?.keterangan ?? "-";
+    if (!detail || !detail.id_parameter) return "";
+    const ket = paramMap[detail.id_parameter]?.keterangan;
+    return ket !== undefined && ket !== null ? ket : "";
   };
   const getTotalNilai = (item) =>
     kriteriaAll.reduce((sum, k) => {
       const n = Number(getCellValue(item, k.id_kriteria));
-      return sum + (!isNaN(n) && n !== "-" ? n : 0);
+      return sum + (!isNaN(n) && n !== "" ? n : 0);
     }, 0);
 
-  // Modal logic
   const openAddPopup = () => {
     setFormValues({
       poktanId: selectedPoktan?.value || null,
@@ -130,7 +115,6 @@ export default function TablePenilaian() {
     setLockPoktan(false);
   };
 
-  // CRUD dengan axios
   const handleSave = () => {
     if (!formValues.poktanId)
       return Swal.fire("Pilih Poktan terlebih dahulu", "", "warning");
@@ -215,7 +199,7 @@ export default function TablePenilaian() {
       (p) => p.id_kriteria.toString() === id_kriteria.toString()
     );
 
-  const getNamaPoktan = (id_poktan) => poktanMap[id_poktan] || "-";
+  const getNamaPoktan = (id_poktan) => poktanMap[id_poktan] || "";
 
   const handlePoktanSelect = (option) => {
     setSelectedPoktan(option);
@@ -269,27 +253,24 @@ export default function TablePenilaian() {
             <tbody>
               {penilaianAll.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={3 + kriteriaAll.length + 2}
-                    className="px-4 py-4 text-center text-gray-500"
-                  >
+                  <td colSpan={3 + kriteriaAll.length + 2} className="px-4 py-4 text-center text-gray-500">
                     Belum ada poktan yang sudah dinilai
                   </td>
                 </tr>
               )}
               {penilaianAll.map((item, idx) => (
-                <tr
-                  key={item.id_penilaian}
-                  className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
-                >
+                <tr key={item.id_penilaian} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                   <td className="px-4 py-2">{idx + 1}</td>
                   <td className="px-4 py-2">{item.id_poktan}</td>
                   <td className="px-4 py-2">{getNamaPoktan(item.id_poktan)}</td>
-                  {kriteriaAll.map((krt) => (
-                    <td key={krt.id_kriteria} className="px-4 py-2 text-center">
-                      {getCellValue(item, krt.id_kriteria)}
-                    </td>
-                  ))}
+                  {kriteriaAll.map((krt) => {
+                    const val = getCellValue(item, krt.id_kriteria);
+                    return (
+                      <td key={krt.id_kriteria} className="px-4 py-2 text-center">
+                        {val}
+                      </td>
+                    );
+                  })}
                   <td className="px-4 py-2 text-center font-semibold">
                     {getTotalNilai(item)}
                   </td>
@@ -316,7 +297,7 @@ export default function TablePenilaian() {
         </table>
       </div>
 
-      {/* Tabel Label */}
+      {/* Table Label */}
       <h3 className="font-semibold my-4">
         Tabel Keterangan Penilaian (Label Parameter)
       </h3>
@@ -342,27 +323,24 @@ export default function TablePenilaian() {
             <tbody>
               {penilaianAll.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={3 + kriteriaAll.length + 1}
-                    className="px-4 py-4 text-center text-gray-500"
-                  >
+                  <td colSpan={3 + kriteriaAll.length + 1} className="px-4 py-4 text-center text-gray-500">
                     Belum ada poktan yang sudah dinilai
                   </td>
                 </tr>
               )}
               {penilaianAll.map((item, idx) => (
-                <tr
-                  key={item.id_penilaian + "_label"}
-                  className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
-                >
+                <tr key={item.id_penilaian + "_label"} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                   <td className="px-4 py-2">{idx + 1}</td>
                   <td className="px-4 py-2">{item.id_poktan}</td>
                   <td className="px-4 py-2">{getNamaPoktan(item.id_poktan)}</td>
-                  {kriteriaAll.map((krt) => (
-                    <td key={krt.id_kriteria} className="px-4 py-2 text-center">
-                      {getCellLabel(item, krt.id_kriteria)}
-                    </td>
-                  ))}
+                  {kriteriaAll.map((krt) => {
+                    const label = getCellLabel(item, krt.id_kriteria);
+                    return (
+                      <td key={krt.id_kriteria} className="px-4 py-2 text-center">
+                        {label}
+                      </td>
+                    );
+                  })}
                   <td className="px-4 py-2 flex space-x-2 justify-center">
                     <button
                       onClick={() => openEditPopup(item)}

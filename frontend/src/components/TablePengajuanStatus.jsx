@@ -3,7 +3,6 @@ import Swal from "sweetalert2";
 import axios from "axios";
 import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
 
-// Format tanggal ke "dd/mm/yyyy"
 function formatTanggalOnly(tgl) {
   if (!tgl) return "-";
   const d = new Date(tgl);
@@ -96,7 +95,7 @@ export default function TablePengajuanWithModal() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post("http://localhost:8000/api/pengajuan", form, {
+      await axios.post("http://localhost:8000/api/pengajuan", form, {
         headers: { Accept: "application/json" }
       });
       setModalOpen(false);
@@ -184,7 +183,7 @@ export default function TablePengajuanWithModal() {
     });
   };
 
-  // Delete
+  // PERBAIKI DI SINI -- DELETE PAKAI METHOD DELETE REST API
   const handleDelete = async (id_pengajuan) => {
     Swal.fire({
       title: "Konfirmasi",
@@ -196,9 +195,9 @@ export default function TablePengajuanWithModal() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          await axios.post(
+          // GANTI axios.post menjadi axios.delete sesuai RESTful
+          await axios.delete(
             `http://localhost:8000/api/pengajuan/${id_pengajuan}`,
-            { _method: "DELETE" },
             { headers: { Accept: "application/json" } }
           );
           fetchPengajuan();
@@ -277,7 +276,7 @@ export default function TablePengajuanWithModal() {
                       title="Update Status"
                       onClick={() => openEditStatusModal(item)}
                     >
-                      <PencilSquareIcon className="h-5 w-5" />
+                      <PencilSquareIcon className="h-5 w-5 cursor-pointer" />
                     </button>
                   </td>
                   <td className="py-3 px-4">
@@ -286,7 +285,7 @@ export default function TablePengajuanWithModal() {
                       title="Hapus"
                       onClick={() => handleDelete(item.id_pengajuan)}
                     >
-                      <TrashIcon className="h-5 w-5" />
+                      <TrashIcon className="h-5 w-5 cursor-pointer" />
                     </button>
                   </td>
                 </tr>

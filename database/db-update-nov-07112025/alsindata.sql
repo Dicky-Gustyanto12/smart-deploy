@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Nov 07, 2025 at 10:03 AM
+-- Generation Time: Nov 07, 2025 at 12:38 PM
 -- Server version: 8.0.44
 -- PHP Version: 8.2.27
 
@@ -298,9 +298,7 @@ CREATE TABLE `pengajuan` (
 
 INSERT INTO `pengajuan` (`id_pengajuan`, `id_poktan`, `nama_poktan`, `nama_barang`, `merek`, `tipe`, `nama_ketua`, `nomor_hp`, `status`, `created_at`, `updated_at`) VALUES
 ('PJ001', 'P001', 'Mardi Lestari', 'a', 'a', 'a', 'Aris Whisnu', '082223054749', 'Proses', '2025-10-28 06:34:52', '2025-10-28 07:22:00'),
-('PJ002', 'P003', 'a', 'b', 'b', 'b', 'a', '321', 'Diterima', '2025-10-28 06:46:36', '2025-10-28 07:22:43'),
-('PJ003', 'P001', 'Mardi Lestari', 'c', 'c', 'c', 'Aris Whisnu', '082223054749', 'Diterima', '2025-10-28 06:46:49', '2025-10-28 07:21:01'),
-('PJ004', 'P003', 'a', 'n', 'n', 'n', 'a', '321', 'Proses', '2025-10-28 06:47:45', '2025-10-28 06:47:45');
+('PJ003', 'P001', 'Mardi Lestari', 'c', 'c', 'c', 'Aris Whisnu', '082223054749', 'Diterima', '2025-10-28 06:46:49', '2025-10-28 07:21:01');
 
 -- --------------------------------------------------------
 
@@ -321,7 +319,8 @@ CREATE TABLE `penilaian` (
 --
 
 INSERT INTO `penilaian` (`id_penilaian`, `id_poktan`, `total_nilai`, `created_at`, `updated_at`) VALUES
-(7, 'P002', 21, '2025-10-28 04:44:26', '2025-11-06 10:27:21');
+(7, 'P002', 21, '2025-10-28 04:44:26', '2025-11-06 10:27:21'),
+(11, 'P001', 12, '2025-11-07 04:26:45', '2025-11-07 04:32:15');
 
 -- --------------------------------------------------------
 
@@ -347,7 +346,11 @@ INSERT INTO `penilaian_detail` (`id_detail`, `id_penilaian`, `id_kriteria`, `id_
 (88, 7, 2, 5, '2025-11-06 10:27:21', '2025-11-06 10:27:21'),
 (89, 7, 3, 3, '2025-11-06 10:27:21', '2025-11-06 10:27:21'),
 (90, 7, 4, 8, '2025-11-06 10:27:21', '2025-11-06 10:27:21'),
-(91, 7, 18, 19, '2025-11-06 10:27:21', '2025-11-06 10:27:21');
+(91, 7, 18, 19, '2025-11-06 10:27:21', '2025-11-06 10:27:21'),
+(104, 11, 1, 2, '2025-11-07 04:32:15', '2025-11-07 04:32:15'),
+(105, 11, 2, 5, '2025-11-07 04:32:15', '2025-11-07 04:32:15'),
+(106, 11, 3, 3, '2025-11-07 04:32:15', '2025-11-07 04:32:15'),
+(107, 11, 4, 8, '2025-11-07 04:32:15', '2025-11-07 04:32:15');
 
 -- --------------------------------------------------------
 
@@ -381,7 +384,9 @@ INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `n
 (6, 'App\\Models\\User', 2, 'auth_token', 'b3b0b4434e5ee9e26ff5ed044fc69628bcfb05ea3fcaf54f44a46767bad7b087', '[\"*\"]', '2025-11-06 07:05:36', NULL, '2025-11-06 07:03:55', '2025-11-06 07:05:36'),
 (7, 'App\\Models\\User', 1, 'auth_token', '82ed138ada6dfd299452021da1539753f5577ce33af3e74a81d87db3095ae263', '[\"*\"]', '2025-11-06 09:31:55', NULL, '2025-11-06 09:19:22', '2025-11-06 09:31:55'),
 (8, 'App\\Models\\User', 2, 'auth_token', '5bf76a6a7a9465ac35540710304826cba36661828292d934769a02870c314a2d', '[\"*\"]', '2025-11-06 13:02:46', NULL, '2025-11-06 09:33:49', '2025-11-06 13:02:46'),
-(9, 'App\\Models\\User', 1, 'auth_token', '739869bffb50a3ed00002376dda6470a3b843c7168e16e824213581c44ee4f17', '[\"*\"]', '2025-11-06 12:42:42', NULL, '2025-11-06 12:34:14', '2025-11-06 12:42:42');
+(9, 'App\\Models\\User', 1, 'auth_token', '739869bffb50a3ed00002376dda6470a3b843c7168e16e824213581c44ee4f17', '[\"*\"]', '2025-11-06 12:42:42', NULL, '2025-11-06 12:34:14', '2025-11-06 12:42:42'),
+(10, 'App\\Models\\User', 1, 'auth_token', 'cac1bd8025e148f48599c3c3eb5351029aa6aaf72394dbab8327b6563bd3ea50', '[\"*\"]', '2025-11-07 05:34:47', NULL, '2025-11-07 03:12:05', '2025-11-07 05:34:47'),
+(11, 'App\\Models\\User', 1, 'auth_token', '79493e074fc4695b09d21a20c6471e779b54f8f50befc97ad068cdcac27a710e', '[\"*\"]', '2025-11-07 03:44:00', NULL, '2025-11-07 03:43:02', '2025-11-07 03:44:00');
 
 -- --------------------------------------------------------
 
@@ -687,19 +692,19 @@ ALTER TABLE `password_resets_api`
 -- AUTO_INCREMENT for table `penilaian`
 --
 ALTER TABLE `penilaian`
-  MODIFY `id_penilaian` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id_penilaian` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `penilaian_detail`
 --
 ALTER TABLE `penilaian_detail`
-  MODIFY `id_detail` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=100;
+  MODIFY `id_detail` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=112;
 
 --
 -- AUTO_INCREMENT for table `personal_access_tokens`
 --
 ALTER TABLE `personal_access_tokens`
-  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` bigint UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `rekomendasi`
