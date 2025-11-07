@@ -3,6 +3,22 @@ import Swal from "sweetalert2";
 import axios from "axios";
 import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
 
+// --- axios instance dengan Bearer token otomatis (optional JWT auth) ---
+const api = axios.create({
+  baseURL: "https://apiv2.alsindata.id/api",
+  headers: {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  },
+});
+api.interceptors.request.use((config) => {
+  const token = sessionStorage.getItem("token"); // atau localStorage
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 function TableSkeleton({ rows = 4, cols = 6 }) {
   return (
     <tbody>
@@ -31,16 +47,14 @@ export default function TableKriteria() {
     bobot: "",
   });
 
-  // Fetch data kriteria dengan header Accept: application/json
+  // Fetch data kriteria
   const fetchKriteria = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("http://localhost:8000/api/kriteria", {
-        headers: { Accept: "application/json" }
-      });
+      const res = await api.get("/kriteria");
       setData(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
-      Swal.fire("Gagal!", e.message, "error");
+      Swal.fire("Gagal!", e.response?.data?.message || e.message, "error");
       setData([]);
     } finally {
       setLoading(false);
@@ -80,7 +94,7 @@ export default function TableKriteria() {
 
   const closePopup = () => setPopupOpen(false);
 
-  // Tambah/Edit dengan header Accept
+  // Tambah/Edit
   const handleSave = async () => {
     if (!formValues.kode || !formValues.kriteria || !formValues.bobot) {
       Swal.fire("Lengkapi semua field!", "", "warning");
@@ -102,17 +116,9 @@ export default function TableKriteria() {
             bobot: parseFloat(formValues.bobot),
           };
           if (editMode) {
-            await axios.put(
-              `http://localhost:8000/api/kriteria/${formValues.id_kriteria}`,
-              payload,
-              { headers: { Accept: "application/json" } }
-            );
+            await api.put(`/kriteria/${formValues.id_kriteria}`, payload);
           } else {
-            await axios.post(
-              "http://localhost:8000/api/kriteria",
-              payload,
-              { headers: { Accept: "application/json" } }
-            );
+            await api.post("/kriteria", payload);
           }
           closePopup();
           await fetchKriteria();
@@ -122,7 +128,7 @@ export default function TableKriteria() {
             "success"
           );
         } catch (e) {
-          Swal.fire("Gagal!", e.message, "error");
+          Swal.fire("Gagal!", e.response?.data?.message || e.message, "error");
         } finally {
           setLoading(false);
         }
@@ -132,7 +138,7 @@ export default function TableKriteria() {
     });
   };
 
-  // Delete dengan header Accept
+  // Delete
   const handleDelete = (id_kriteria) => {
     Swal.fire({
       title: "Yakin ingin menghapus data?",
@@ -144,14 +150,11 @@ export default function TableKriteria() {
       if (result.isConfirmed) {
         setLoading(true);
         try {
-          await axios.delete(
-            `http://localhost:8000/api/kriteria/${id_kriteria}`,
-            { headers: { Accept: "application/json" } }
-          );
+          await api.delete(`/kriteria/${id_kriteria}`);
           await fetchKriteria();
           Swal.fire("Berhasil!", "Data berhasil dihapus", "success");
         } catch (e) {
-          Swal.fire("Gagal!", e.message, "error");
+          Swal.fire("Gagal!", e.response?.data?.message || e.message, "error");
         } finally {
           setLoading(false);
         }

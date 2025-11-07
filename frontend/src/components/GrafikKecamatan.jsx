@@ -20,6 +20,20 @@ ChartJS.register(
   Legend
 );
 
+// Axios instance JWT/production
+const api = axios.create({
+  baseURL: "https://apiv2.alsindata.id/api",
+  headers: {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  },
+});
+api.interceptors.request.use((config) => {
+  const token = sessionStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 export default function GrafikJumlahPengajuanPerKecamatanFinal({ className }) {
   const [labels, setLabels] = useState([]);
   const [dataCounts, setDataCounts] = useState([]);
@@ -27,29 +41,24 @@ export default function GrafikJumlahPengajuanPerKecamatanFinal({ className }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Fetch data saat komponen mount
     const fetchData = async () => {
       setLoading(true);
       setError(null);
       try {
         const [poktanRes, pengajuanRes] = await Promise.all([
-          axios.get("http://localhost:8000/api/poktan", {
-            headers: { Accept: "application/json" }
-          }),
-          axios.get("http://localhost:8000/api/pengajuan", {
-            headers: { Accept: "application/json" }
-          }),
+          api.get("/poktan"),
+          api.get("/pengajuan"),
         ]);
 
         const poktanAll = poktanRes.data;
         const pengajuanAll = pengajuanRes.data;
 
-        // Filter status pengajuan sesuaikan kebutuhan
+        // Gunakan status validasi sesuai kebutuhan
         const pengajuanValid = pengajuanAll.filter((p) =>
           ["Diterima", "Selesai"].includes(p.status)
         );
 
-        // Hitung per kecamatan
+        // Hitung jumlah pengajuan per kecamatan
         const kecamatanMap = {};
         pengajuanValid.forEach((pengajuan) => {
           const poktan = poktanAll.find(
@@ -67,13 +76,11 @@ export default function GrafikJumlahPengajuanPerKecamatanFinal({ className }) {
         setLabels(kecamatanArr);
         setDataCounts(counts);
       } catch (err) {
-        console.error(err);
         setError("Gagal memuat data grafik. Periksa console untuk detail.");
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
@@ -101,7 +108,8 @@ export default function GrafikJumlahPengajuanPerKecamatanFinal({ className }) {
       },
       tooltip: {
         callbacks: {
-          label: (ctx) => `${labels[ctx.dataIndex]}: ${ctx.parsed.y} pengajuan`,
+          label: (ctx) =>
+            `${labels[ctx.dataIndex]}: ${ctx.parsed.y} pengajuan`,
         },
       },
     },
@@ -109,9 +117,7 @@ export default function GrafikJumlahPengajuanPerKecamatanFinal({ className }) {
       x: {
         title: { display: true, text: "Kecamatan" },
         ticks: { autoSkip: false, font: { size: 11 } },
-        grid: {
-          display: false, // Hapus grid vertikal antar label kecamatan
-        },
+        grid: { display: false },
       },
       y: {
         beginAtZero: true,

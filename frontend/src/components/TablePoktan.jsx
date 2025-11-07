@@ -3,11 +3,28 @@ import Swal from "sweetalert2";
 import axios from "axios";
 import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
 
-// Skeleton Loader
+// --- Axios instance langsung di sini untuk Auth Bearer Token ---
+const api = axios.create({
+  baseURL: "https://apiv2.alsindata.id/api",
+  headers: {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  },
+});
+
+api.interceptors.request.use((config) => {
+  const token = sessionStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// --- Loader skeleton ---
 function TableSkeleton({ rows = 5 }) {
   return (
     <tbody>
-      {Array.from({ length: rows }).map((_, idx) => (
+      {Array.from({ length: rows }, (_, idx) => (
         <tr key={idx} className={idx % 2 === 0 ? "bg-gray-50" : "bg-white"}>
           {Array(9)
             .fill()
@@ -35,17 +52,19 @@ export default function TablePoktan() {
     nomor_hp: "",
     nama_ketua: "",
     nik: "",
-    // id_poktan ONLY for edit, not in create
+    // id_poktan ONLY for edit
   });
 
-  // Fetch data: selalu gunakan url absolut & header accept
   useEffect(() => {
+    fetchData();
+    // eslint-disable-next-line
+  }, []);
+
+  const fetchData = () => {
     setLoading(true);
     setErrorMsg("");
-    axios
-      .get("http://localhost:8000/api/poktan", {
-        headers: { Accept: "application/json" }
-      })
+    api
+      .get("/poktan")
       .then((res) => setData(res.data))
       .catch((err) =>
         setErrorMsg(
@@ -55,7 +74,7 @@ export default function TablePoktan() {
         )
       )
       .finally(() => setLoading(false));
-  }, []);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -83,7 +102,7 @@ export default function TablePoktan() {
       nomor_hp: item.nomor_hp,
       nama_ketua: item.nama_ketua,
       nik: item.nik,
-      id_poktan: item.id_poktan, // ONLY for update
+      id_poktan: item.id_poktan,
     });
     setEditMode(true);
     setPopupOpen(true);
@@ -101,14 +120,7 @@ export default function TablePoktan() {
       nik,
       id_poktan,
     } = formValues;
-    if (
-      !nama_poktan ||
-      !desa ||
-      !kecamatan ||
-      !nomor_hp ||
-      !nama_ketua ||
-      !nik
-    ) {
+    if (!nama_poktan || !desa || !kecamatan || !nomor_hp || !nama_ketua || !nik) {
       Swal.fire("Lengkapi semua field!", "", "warning");
       return;
     }
@@ -117,47 +129,23 @@ export default function TablePoktan() {
       setLoading(true);
       let res, updated;
       if (editMode) {
-        res = await axios.put(
-          `http://localhost:8000/api/poktan/${id_poktan}`,
-          {
-            nama_poktan,
-            desa,
-            kecamatan,
-            nomor_hp,
-            nama_ketua,
-            nik,
-          },
-          { headers: { Accept: "application/json" } }
-        );
+        res = await api.put(`/poktan/${id_poktan}`, {
+          nama_poktan, desa, kecamatan, nomor_hp, nama_ketua, nik,
+        });
         updated = res.data;
-        setData((prev) =>
-          prev.map((d) => (d.id_poktan === updated.id_poktan ? updated : d))
-        );
+        setData((prev) => prev.map((d) => (d.id_poktan === updated.id_poktan ? updated : d)));
         Swal.fire("Berhasil!", "Data berhasil diupdate.", "success");
       } else {
-        res = await axios.post(
-          "http://localhost:8000/api/poktan",
-          {
-            nama_poktan,
-            desa,
-            kecamatan,
-            nomor_hp,
-            nama_ketua,
-            nik,
-          },
-          { headers: { Accept: "application/json" } }
-        );
+        res = await api.post("/poktan", {
+          nama_poktan, desa, kecamatan, nomor_hp, nama_ketua, nik,
+        });
         updated = res.data;
         setData((prev) => [...prev, updated]);
         Swal.fire("Berhasil!", "Data berhasil ditambahkan.", "success");
       }
       closePopup();
     } catch (e) {
-      Swal.fire(
-        "Gagal!",
-        e.response?.data?.message || e.message,
-        "error"
-      );
+      Swal.fire("Gagal!", e.response?.data?.message || e.message, "error");
     } finally {
       setLoading(false);
     }
@@ -176,10 +164,7 @@ export default function TablePoktan() {
       if (result.isConfirmed) {
         setLoading(true);
         try {
-          await axios.delete(
-            `http://localhost:8000/api/poktan/${id_poktan}`,
-            { headers: { Accept: "application/json" } }
-          );
+          await api.delete(`/poktan/${id_poktan}`);
           setData((prev) => prev.filter((d) => d.id_poktan !== id_poktan));
           Swal.fire("Berhasil!", "Data berhasil dihapus.", "success");
         } catch (e) {

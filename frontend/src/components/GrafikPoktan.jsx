@@ -20,6 +20,20 @@ ChartJS.register(
   Legend
 );
 
+// Axios instance with Bearer Token
+const api = axios.create({
+  baseURL: "https://apiv2.alsindata.id/api",
+  headers: {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  },
+});
+api.interceptors.request.use((config) => {
+  const token = sessionStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 const monthLabels = [
   "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
   "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
@@ -35,10 +49,8 @@ export default function BarChartKelompokTani({ className }) {
       setLoading(true);
       setError(null);
       try {
-        const res = await axios.get("http://localhost:8000/api/pengajuan", {
-          headers: { Accept: "application/json" }
-        });
-        const pengajuanAll = res.data;
+        const res = await api.get("/pengajuan");
+        const pengajuanAll = res.data || [];
 
         // Filter pengajuan dengan status Diterima/Selesai
         const pengajuanValid = pengajuanAll.filter((p) =>
@@ -57,7 +69,6 @@ export default function BarChartKelompokTani({ className }) {
 
         setMonthlyCounts(monthCount);
       } catch (err) {
-        console.error(err);
         setError("Gagal memuat data grafik");
       } finally {
         setLoading(false);
@@ -90,7 +101,7 @@ export default function BarChartKelompokTani({ className }) {
       tooltip: {
         callbacks: {
           label: (context) =>
-            `${context.label}: ${Math.round(context.parsed.y)} kelompok`, // angka utuh
+            `${context.label}: ${Math.round(context.parsed.y)} kelompok`,
         },
       },
     },

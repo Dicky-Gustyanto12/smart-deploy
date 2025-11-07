@@ -4,6 +4,20 @@ import Swal from "sweetalert2";
 import axios from "axios";
 import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
 
+// Axios instance (Bearer token JWT) - semua request aman authorized
+const api = axios.create({
+  baseURL: "https://apiv2.alsindata.id/api",
+  headers: {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  },
+});
+api.interceptors.request.use((config) => {
+  const token = sessionStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 function TableSkeleton({ rows = 2, cols = 7 }) {
   return (
     <tbody>
@@ -36,15 +50,16 @@ export default function TablePenilaian() {
 
   useEffect(() => {
     fetchData();
-    axios.get("http://localhost:8000/api/kriteria").then((res) => setKriteriaAll(res.data));
-    axios.get("http://localhost:8000/api/parameter").then((res) => setParameterAll(res.data));
+    api.get("/kriteria").then((res) => setKriteriaAll(res.data));
+    api.get("/parameter").then((res) => setParameterAll(res.data));
+    // eslint-disable-next-line
   }, []);
 
   const fetchData = () => {
     setLoading(true);
     Promise.all([
-      axios.get("http://localhost:8000/api/poktan"),
-      axios.get("http://localhost:8000/api/penilaian"),
+      api.get("/poktan"),
+      api.get("/penilaian"),
     ])
       .then(([poktanRes, penilaianRes]) => {
         const poktanResult = poktanRes.data;
@@ -133,9 +148,9 @@ export default function TablePenilaian() {
         setLoading(true);
         const method = editId ? "put" : "post";
         const url = editId
-          ? `http://localhost:8000/api/penilaian/${editId}`
-          : "http://localhost:8000/api/penilaian";
-        axios[method](
+          ? `/penilaian/${editId}`
+          : "/penilaian";
+        api[method](
           url,
           {
             id_poktan: formValues.poktanId,
@@ -145,9 +160,6 @@ export default function TablePenilaian() {
                 formValues[k.id_kriteria],
               ])
             ),
-          },
-          {
-            headers: { "Content-Type": "application/json", Accept: "application/json" },
           }
         )
           .then(() => {
@@ -179,9 +191,7 @@ export default function TablePenilaian() {
     }).then((result) => {
       if (result.isConfirmed) {
         setLoading(true);
-        axios.delete(`http://localhost:8000/api/penilaian/${id_penilaian}`, {
-          headers: { Accept: "application/json" },
-        })
+        api.delete(`/penilaian/${id_penilaian}`)
           .then(() => {
             fetchData();
             Swal.fire("Terhapus!", "Penilaian berhasil dihapus.", "success");
@@ -412,40 +422,46 @@ export default function TablePenilaian() {
                     <tr key={krt.id_kriteria} className="bg-white">
                       <td className="px-4 py-2 font-medium">{krt.kriteria}</td>
                       <td className="px-4 py-2">
-                        {getParameterOptions(krt.id_kriteria).length === 0 ? (
+                        {parameterAll.filter(
+                          (p) => p.id_kriteria.toString() === krt.id_kriteria.toString()
+                        ).length === 0 ? (
                           <span className="text-gray-400">
                             Tidak ada parameter
                           </span>
                         ) : (
-                          getParameterOptions(krt.id_kriteria).map((param) => (
-                            <label
-                              key={param.id_parameter}
-                              className="inline-flex items-center mr-6"
-                            >
-                              <input
-                                type="radio"
-                                name={krt.id_kriteria}
-                                value={param.id_parameter}
-                                checked={
-                                  formValues[krt.id_kriteria]?.toString() ===
-                                  param.id_parameter.toString()
-                                }
-                                onChange={() =>
-                                  handleFormChange(
-                                    krt.id_kriteria,
-                                    param.id_parameter
-                                  )
-                                }
-                                disabled={loading}
-                              />
-                              <span className="ml-1">
-                                {param.keterangan}
-                                <span className="text-xs text-gray-500 ml-1">
-                                  (Nilai: {param.nilai})
+                          parameterAll
+                            .filter(
+                              (param) => param.id_kriteria.toString() === krt.id_kriteria.toString()
+                            )
+                            .map((param) => (
+                              <label
+                                key={param.id_parameter}
+                                className="inline-flex items-center mr-6"
+                              >
+                                <input
+                                  type="radio"
+                                  name={krt.id_kriteria}
+                                  value={param.id_parameter}
+                                  checked={
+                                    formValues[krt.id_kriteria]?.toString() ===
+                                    param.id_parameter.toString()
+                                  }
+                                  onChange={() =>
+                                    handleFormChange(
+                                      krt.id_kriteria,
+                                      param.id_parameter
+                                    )
+                                  }
+                                  disabled={loading}
+                                />
+                                <span className="ml-1">
+                                  {param.keterangan}
+                                  <span className="text-xs text-gray-500 ml-1">
+                                    (Nilai: {param.nilai})
+                                  </span>
                                 </span>
-                              </span>
-                            </label>
-                          ))
+                              </label>
+                            ))
                         )}
                       </td>
                     </tr>

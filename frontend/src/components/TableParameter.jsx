@@ -3,11 +3,25 @@ import Swal from "sweetalert2";
 import axios from "axios";
 import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
 
-// Utility untuk kelompok kriteria
+// Axios instance (Bearer JWT ready)
+const api = axios.create({
+  baseURL: "https://apiv2.alsindata.id/api",
+  headers: {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  },
+});
+api.interceptors.request.use((config) => {
+  const token = sessionStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+// Utility group by kriteria parameter
 function groupByKriteria(data) {
   const map = new Map();
   data.forEach((item) => {
-    const key = item.kriteria.kriteria; // nama kriteria dari relasi
+    const key = item.kriteria.kriteria;
     if (!map.has(key)) map.set(key, []);
     map.get(key).push(item);
   });
@@ -30,9 +44,7 @@ export default function TableParameter() {
   // Fetch master kriteria
   const fetchKriteria = async () => {
     try {
-      const res = await axios.get("http://localhost:8000/api/kriteria", {
-        headers: { Accept: "application/json" }
-      });
+      const res = await api.get("/kriteria");
       if (Array.isArray(res.data)) setKriteriaList(res.data);
       else if (res.data && Array.isArray(res.data.data))
         setKriteriaList(res.data.data);
@@ -42,13 +54,11 @@ export default function TableParameter() {
     }
   };
 
-  // Fetch parameter + relasi
+  // Fetch parameter (plus relasi kriteria)
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("http://localhost:8000/api/parameter", {
-        headers: { Accept: "application/json" }
-      });
+      const res = await api.get("/parameter");
       if (Array.isArray(res.data)) setData(res.data);
       else if (res.data && Array.isArray(res.data.data)) setData(res.data.data);
       else setData([]);
@@ -63,6 +73,7 @@ export default function TableParameter() {
   useEffect(() => {
     fetchKriteria();
     fetchData();
+    // eslint-disable-next-line
   }, []);
 
   const handleChange = (e) => {
@@ -94,7 +105,7 @@ export default function TableParameter() {
 
   const closePopup = () => setPopupOpen(false);
 
-  // Save (POST/PUT) dengan axios + header Accept
+  // Save (POST/PUT) parameter
   const handleSave = async () => {
     if (
       !formValues.id_kriteria ||
@@ -105,17 +116,17 @@ export default function TableParameter() {
       return;
     }
     try {
-      let url = "http://localhost:8000/api/parameter";
+      let url = "/parameter";
       let method = "post";
       if (editMode) {
         url += "/" + formValues.id_parameter;
         method = "put";
       }
-      await axios[method](url, {
+      await api[method](url, {
         id_kriteria: formValues.id_kriteria,
         keterangan: formValues.keterangan,
         nilai: parseInt(formValues.nilai, 10),
-      }, { headers: { Accept: "application/json" } });
+      });
       await fetchData();
       Swal.fire(
         "Berhasil!",
@@ -123,12 +134,12 @@ export default function TableParameter() {
         "success"
       );
       closePopup();
-    } catch {
-      Swal.fire("Error", "Gagal menyimpan data.", "error");
+    } catch (e) {
+      Swal.fire("Error", e.response?.data?.message || "Gagal menyimpan data.", "error");
     }
   };
 
-  // Delete dengan axios + header Accept
+  // Hapus parameter
   const handleDelete = async (id_parameter) => {
     const confirm = await Swal.fire({
       title: "Yakin ingin menghapus data?",
@@ -139,18 +150,15 @@ export default function TableParameter() {
     });
     if (!confirm.isConfirmed) return;
     try {
-      await axios.delete(
-        `http://localhost:8000/api/parameter/${id_parameter}`,
-        { headers: { Accept: "application/json" } }
-      );
+      await api.delete(`/parameter/${id_parameter}`);
       await fetchData();
       Swal.fire("Berhasil!", "Data dihapus.", "success");
-    } catch {
-      Swal.fire("Error", "Gagal menghapus data.", "error");
+    } catch (e) {
+      Swal.fire("Error", e.response?.data?.message || "Gagal menghapus data.", "error");
     }
   };
 
-  // Data sorting + grouping
+  // Grouping
   const sorted = [...data].sort((a, b) => a.id_kriteria - b.id_kriteria);
   const groups = groupByKriteria(sorted);
 

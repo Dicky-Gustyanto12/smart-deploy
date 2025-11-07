@@ -1,6 +1,20 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 
+// Axios instance with Bearer Token
+const api = axios.create({
+  baseURL: "https://apiv2.alsindata.id/api",
+  headers: {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  },
+});
+api.interceptors.request.use((config) => {
+  const token = sessionStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 function TableSkeleton({ rows = 2, cols = 5 }) {
   return (
     <tbody>
@@ -27,18 +41,18 @@ export default function TablePenilaianSimple() {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      axios.get("http://localhost:8000/api/poktan"),
-      axios.get("http://localhost:8000/api/penilaian"),
-      axios.get("http://localhost:8000/api/kriteria"),
-      axios.get("http://localhost:8000/api/parameter"),
+      api.get("/poktan"),
+      api.get("/penilaian"),
+      api.get("/kriteria"),
+      api.get("/parameter"),
     ])
       .then(([poktanRes, penilaianRes, kriteriaRes, parameterRes]) => {
         setPoktanMap(Object.fromEntries(
-          poktanRes.data.map((p) => [p.id_poktan, p.nama_poktan])
+          (poktanRes.data || []).map((p) => [p.id_poktan, p.nama_poktan])
         ));
-        setPenilaianAll(penilaianRes.data);
-        setKriteriaAll(kriteriaRes.data);
-        setParameterAll(parameterRes.data);
+        setPenilaianAll(penilaianRes.data || []);
+        setKriteriaAll(kriteriaRes.data || []);
+        setParameterAll(parameterRes.data || []);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -52,6 +66,8 @@ export default function TablePenilaianSimple() {
     return nilai !== undefined && nilai !== null ? nilai : "";
   };
   const getNamaPoktan = (id_poktan) => poktanMap[id_poktan] || "";
+
+  // Cmax/Cmin/Utilitas
   const getCmax = (id_kriteria) => {
     const vals = penilaianAll.map(item => Number(getCellValue(item, id_kriteria))).filter(n => !isNaN(n));
     return vals.length ? Math.max(...vals) : '';
@@ -75,10 +91,10 @@ export default function TablePenilaianSimple() {
     if (pembagi === 0) return 0;
     return ((Cout - Cmin) / pembagi).toFixed(2);
   };
-  // Bobot dinamis dari API kriteria
+  // Bobot dinamis
   const getBobotKriteria = (id_kriteria) => {
     const krt = kriteriaAll.find(k => k.id_kriteria === id_kriteria);
-    return krt ? Number(krt.bobot) : 0; // pastikan field 'bobot' ada
+    return krt ? Number(krt.bobot) : 0;
   };
   // Perhitungan row SMART
   const getNilaiAkhirRow = (item) => {

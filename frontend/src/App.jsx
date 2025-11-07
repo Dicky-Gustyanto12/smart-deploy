@@ -5,7 +5,7 @@ import {
   Navigate,
   Outlet,
 } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
+import AuthProvider from "./contexts/AuthContext";      // PENTING: default, bukan named!
 import ProtectedRoute from "./components/ProtectedRoute";
 import PublicRoute from "./components/PublicRoute";
 import Sidebar from "./components/Sidebar";
@@ -72,4 +72,3 @@ function App() {
 }
 
 export default App;
-  

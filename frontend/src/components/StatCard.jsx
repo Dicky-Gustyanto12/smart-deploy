@@ -7,6 +7,21 @@ import {
 } from "@heroicons/react/24/solid";
 import CountUp from "react-countup";
 
+// Axios instance untuk Bearer token (ambil dari sessionStorage)
+const api = axios.create({
+  baseURL: "https://apiv2.alsindata.id/api",
+  headers: {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  },
+});
+api.interceptors.request.use((config) => {
+  const token = sessionStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+// Icon mapping, gunakan komponen agar tidak error hydration split
 const iconMap = {
   Diterima: <CheckCircleIcon className="w-6 h-6 text-white" />,
   Proses: <ClockIcon className="w-6 h-6 text-white" />,
@@ -25,19 +40,24 @@ const StatusAlsintanWidgetFullWidth = () => {
     Proses: 0,
     Dibatalkan: 0,
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios
-      .get("http://localhost:8000/api/pengajuan", {
-        headers: { Accept: "application/json" }
-      })
+    setLoading(true);
+    api
+      .get("/pengajuan")
       .then((res) => {
         const initial = { Diterima: 0, Proses: 0, Dibatalkan: 0 };
-        for (const d of res.data) {
-          if (initial[d.status] !== undefined) initial[d.status]++;
+        for (const d of res.data || []) {
+          // Unifikasi untuk status typo/inkonsistensi
+          if (d.status === "Dibatalkan" || d.status === "Batal")
+            initial.Dibatalkan++;
+          else if (initial[d.status] !== undefined) initial[d.status]++;
         }
         setCounts(initial);
-      });
+      })
+      .catch(() => setCounts({ Diterima: 0, Proses: 0, Dibatalkan: 0 }))
+      .finally(() => setLoading(false));
   }, []);
 
   const cardData = [
@@ -64,13 +84,17 @@ const StatusAlsintanWidgetFullWidth = () => {
   return (
     <div className="flex gap-6 w-full">
       {cardData.map((c, idx) => (
-        <div key={idx} className={`rounded-xl shadow-sm p-6 ${c.bg} flex-1`}>
+        <div key={idx} className={`rounded-xl shadow-sm p-6 ${c.bg} flex-1 min-w-[180px]`}>
           <div className="flex justify-between items-center mb-2">
             <span className="font-medium text-white">{c.title}</span>
             {c.icon}
           </div>
-          <div className="text-3xl font-bold text-white mb-2">
-            <CountUp end={c.value} duration={1.5} separator="" />
+          <div className="text-3xl font-bold text-white mb-2 h-[38px] flex items-center">
+            {loading ? (
+              <span className="text-base text-gray-100 animate-pulse">Memuat...</span>
+            ) : (
+              <CountUp end={c.value} duration={1.5} separator="" />
+            )}
           </div>
         </div>
       ))}

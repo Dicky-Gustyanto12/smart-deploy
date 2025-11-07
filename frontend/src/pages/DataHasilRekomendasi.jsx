@@ -21,15 +21,7 @@ export default function DataHasilRekomendasi() {
             </h1>
             <div>
               <TableCmaxmin />
-            </div>
-            {/* <div>
-              <TableNormalisasi />
-            </div>
-            <div>
-              <TableSkor />
-             
-            </div> */}
-            
+            </div>           
           </div>
         </div>
       </div>

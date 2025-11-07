@@ -3,6 +3,20 @@ import Swal from "sweetalert2";
 import axios from "axios";
 import { PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
 
+// Axios instance: ALL request protected JWT
+const api = axios.create({
+  baseURL: "https://apiv2.alsindata.id/api",
+  headers: {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  },
+});
+api.interceptors.request.use((config) => {
+  const token = sessionStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 function formatTanggalOnly(tgl) {
   if (!tgl) return "-";
   const d = new Date(tgl);
@@ -38,27 +52,22 @@ export default function TablePengajuanWithModal() {
   useEffect(() => {
     fetchPengajuan();
     fetchPoktan();
+    // eslint-disable-next-line
   }, []);
 
-  // Fetch pengajuan
   const fetchPengajuan = () => {
     setLoading(true);
     setErrorMsg("");
-    axios
-      .get("http://localhost:8000/api/pengajuan", {
-        headers: { Accept: "application/json" }
-      })
+    api
+      .get("/pengajuan")
       .then((res) => setData(res.data))
       .catch((err) => setErrorMsg(err.message))
       .finally(() => setLoading(false));
   };
 
-  // Fetch poktan
   const fetchPoktan = () => {
-    axios
-      .get("http://localhost:8000/api/poktan", {
-        headers: { Accept: "application/json" }
-      })
+    api
+      .get("/poktan")
       .then((res) => setPoktanList(res.data))
       .catch(() => setPoktanList([]));
   };
@@ -95,9 +104,7 @@ export default function TablePengajuanWithModal() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:8000/api/pengajuan", form, {
-        headers: { Accept: "application/json" }
-      });
+      await api.post("/pengajuan", form);
       setModalOpen(false);
       fetchPengajuan();
       Swal.fire("Berhasil", "Pengajuan berhasil disimpan!", "success");
@@ -168,10 +175,9 @@ export default function TablePengajuanWithModal() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          await axios.put(
-            `http://localhost:8000/api/pengajuan/${row.id_pengajuan}`,
-            { status: editStatusModal.status },
-            { headers: { Accept: "application/json" } }
+          await api.put(
+            `/pengajuan/${row.id_pengajuan}`,
+            { status: editStatusModal.status }
           );
           fetchPengajuan();
           closeEditStatusModal();
@@ -183,7 +189,6 @@ export default function TablePengajuanWithModal() {
     });
   };
 
-  // PERBAIKI DI SINI -- DELETE PAKAI METHOD DELETE REST API
   const handleDelete = async (id_pengajuan) => {
     Swal.fire({
       title: "Konfirmasi",
@@ -195,11 +200,7 @@ export default function TablePengajuanWithModal() {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          // GANTI axios.post menjadi axios.delete sesuai RESTful
-          await axios.delete(
-            `http://localhost:8000/api/pengajuan/${id_pengajuan}`,
-            { headers: { Accept: "application/json" } }
-          );
+          await api.delete(`/pengajuan/${id_pengajuan}`);
           fetchPengajuan();
           Swal.fire("Berhasil!", "Data pengajuan berhasil dihapus.", "success");
         } catch (err) {

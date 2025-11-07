@@ -1,6 +1,20 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
+// Axios instance dengan Authorization Bearer
+const api = axios.create({
+  baseURL: "https://apiv2.alsindata.id/api",
+  headers: {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  },
+});
+api.interceptors.request.use((config) => {
+  const token = sessionStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 export default function TableHasilRekomendasi() {
   const [penilaianAll, setPenilaianAll] = useState([]);
   const [kriteriaAll, setKriteriaAll] = useState([]);
@@ -10,41 +24,36 @@ export default function TableHasilRekomendasi() {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      axios.get("http://localhost:8000/api/penilaian", {
-        headers: { Accept: "application/json" }
-      }),
-      axios.get("http://localhost:8000/api/kriteria", {
-        headers: { Accept: "application/json" }
-      }),
-      axios.get("http://localhost:8000/api/poktan", {
-        headers: { Accept: "application/json" }
-      }),
+      api.get("/penilaian"),
+      api.get("/kriteria"),
+      api.get("/poktan"),
     ]).then(([penRes, kriRes, pokRes]) => {
       setPenilaianAll(penRes.data);
       setKriteriaAll(kriRes.data);
       setPoktanMap(
-        Object.fromEntries(pokRes.data.map((p) => [p.id_poktan, p.nama_poktan]))
+        Object.fromEntries((pokRes.data || []).map((p) => [p.id_poktan, p.nama_poktan]))
       );
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, []);
 
-  // Bobot dinamis dari field kriteria
+  // Bobot
   const bobotAwal = kriteriaAll.map((k) => Number(k.bobot) || 0);
   const totalBobot = bobotAwal.reduce((a, b) => a + b, 0);
-  const bobotNormal = bobotAwal.map((b) =>
-    totalBobot === 0 ? 0 : b / totalBobot
-  );
+  const bobotNormal = bobotAwal.map((b) => totalBobot === 0 ? 0 : b / totalBobot);
 
+  // Kunci dan kode
   const kriteriaKeys = kriteriaAll.map((k) => k.id_kriteria);
   const kriteriaCodes = kriteriaAll.map((k, i) => k.kode || `K${i + 1}`);
 
+  // Matriks poktan
   const matrixRows = penilaianAll.map((poktan) => ({
     kode: poktan.id_poktan,
     nama: poktanMap[poktan.id_poktan] || "-",
-    nilai: kriteriaKeys.map((k) => poktan.details?.[k]?.nilai ?? 0),
+    nilai: kriteriaKeys.map((k) => Number(poktan.details?.[k]?.nilai ?? 0)),
   }));
 
+  // SMART: normalisasi
   const cmin = kriteriaKeys.map((_, i) =>
     matrixRows.length === 0
       ? 0
@@ -65,6 +74,7 @@ export default function TableHasilRekomendasi() {
     ),
   }));
 
+  // Matrix hasil akhir dan ranking
   let resultMatrix = matrixNorm.map((row) => {
     const skorPerKolom = row.norm.map((val, i) => val * bobotNormal[i]);
     const total = skorPerKolom.reduce((a, b) => a + b, 0);
@@ -107,6 +117,15 @@ export default function TableHasilRekomendasi() {
                     className="py-6 text-gray-400 text-center"
                   >
                     Memuat...
+                  </td>
+                </tr>
+              ) : resultMatrix.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={3 + kriteriaKeys.length + 1}
+                    className="py-6 text-gray-400 text-center"
+                  >
+                    Data penilaian belum tersedia.
                   </td>
                 </tr>
               ) : (

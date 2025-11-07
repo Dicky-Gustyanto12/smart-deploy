@@ -1,6 +1,20 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 
+// Instance axios: auto Bearer Token
+const api = axios.create({
+  baseURL: "https://apiv2.alsindata.id/api",
+  headers: {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  },
+});
+api.interceptors.request.use((config) => {
+  const token = sessionStorage.getItem("token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 // Badge status
 function StatusBadge({ status }) {
   let color = "bg-gray-200 text-gray-800";
@@ -60,12 +74,10 @@ export default function TablePengajuanDiterimaWithTanggalOnly() {
 
   useEffect(() => {
     setLoading(true);
-    axios
-      .get("http://localhost:8000/api/pengajuan", {
-        headers: { Accept: "application/json" }
-      })
+    api
+      .get("/pengajuan")
       .then((res) =>
-        setData(res.data.filter((row) => row.status === "Diterima"))
+        setData((res.data || []).filter((row) => row.status === "Diterima"))
       )
       .catch(() => setData([]))
       .finally(() => setLoading(false));
